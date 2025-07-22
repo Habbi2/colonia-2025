@@ -51,13 +51,15 @@ export async function POST(req: NextRequest) {
       id: docRef.id
     }, { status: 201 });
     
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error en la API de registro:', error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     
     return NextResponse.json({
       success: false,
       message: 'Error al crear el registro',
-      error: error.message
+      error: errorMessage
     }, { status: 500 });
   }
 }

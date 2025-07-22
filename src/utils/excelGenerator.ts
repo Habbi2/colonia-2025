@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
 
-export async function generateExcel(registrations: any[]) {
+export async function generateExcel(registrations: Array<{ id: string; [key: string]: unknown }>) {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Registros Colonia 2025');
 
@@ -50,19 +50,23 @@ export async function generateExcel(registrations: any[]) {
     let birthdate = 'N/A';
     
     if (registration.createdAt) {
-      const date = registration.createdAt.toDate ? registration.createdAt.toDate() : new Date(registration.createdAt);
-      formattedDate = date.toLocaleDateString('es-AR');
+      const dateValue = registration.createdAt;
+      if (typeof dateValue === 'string' || typeof dateValue === 'number' || dateValue instanceof Date) {
+        formattedDate = new Date(dateValue).toLocaleDateString('es-AR');
+      }
     }
     
     if (registration.birthdate) {
-      const date = registration.birthdate.toDate ? registration.birthdate.toDate() : new Date(registration.birthdate);
-      birthdate = date.toLocaleDateString('es-AR');
+      const dateValue = registration.birthdate;
+      if (typeof dateValue === 'string' || typeof dateValue === 'number' || dateValue instanceof Date) {
+        birthdate = new Date(dateValue).toLocaleDateString('es-AR');
+      }
     }
     
     // Format authorized persons
     let authorizedPersonsText = '';
-    if (registration.authorizedPersons && registration.authorizedPersons.length > 0) {
-      authorizedPersonsText = registration.authorizedPersons.map((person: any) => 
+    if (registration.authorizedPersons && Array.isArray(registration.authorizedPersons) && registration.authorizedPersons.length > 0) {
+      authorizedPersonsText = registration.authorizedPersons.map((person: Record<string, unknown>) => 
         `${person.name} (${person.relationship}, ${person.phone}, DNI: ${person.dni})`
       ).join('; ');
     }
@@ -89,9 +93,9 @@ export async function generateExcel(registrations: any[]) {
       allergies: registration.allergies || 'N/A',
       medications: registration.medications || 'N/A',
       specialDiet: registration.specialDiet || 'N/A',
-      emergencyContactName: registration.emergencyContact?.name,
-      emergencyContactPhone: registration.emergencyContact?.phone,
-      emergencyContactRelationship: registration.emergencyContact?.relationship,
+      emergencyContactName: (registration.emergencyContact as { name?: unknown })?.name || 'N/A',
+      emergencyContactPhone: (registration.emergencyContact as { phone?: unknown })?.phone || 'N/A',
+      emergencyContactRelationship: (registration.emergencyContact as { relationship?: unknown })?.relationship || 'N/A',
       weeks: weeksText,
       mealPlan: registration.mealPlan ? 'Sí' : 'No',
       dietaryRestrictions: registration.dietaryRestrictions || 'N/A',

@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
 
     try {
       await adminAuth.verifyIdToken(token);
-    } catch (error) {
+    } catch {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
@@ -47,13 +47,15 @@ export async function GET(req: NextRequest) {
     
     return response;
     
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error exporting registrations:', error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     
     return NextResponse.json({
       success: false,
       message: 'Error al exportar registros',
-      error: error.message
+      error: errorMessage
     }, { status: 500 });
   }
 }

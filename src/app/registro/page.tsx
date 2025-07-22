@@ -4,12 +4,48 @@ import { useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import Link from 'next/link';
 
+interface FormData {
+  childName: string;
+  childLastName: string;
+  birthdate: string;
+  age: string;
+  dni: string;
+  schoolGrade: string;
+  parentName: string;
+  parentLastName: string;
+  relationship: string;
+  phone: string;
+  email: string;
+  address: string;
+  healthInsurance: string;
+  affiliateNumber: string;
+  allergies: string;
+  medications: string;
+  specialDiet: string;
+  emergencyContact: {
+    name: string;
+    phone: string;
+    relationship: string;
+  };
+  weeks: string[];
+  mealPlan: boolean;
+  dietaryRestrictions: string;
+  authorizedPersons: Array<{
+    name: string;
+    relationship: string;
+    phone: string;
+    dni: string;
+  }>;
+  additionalInfo: string;
+  photoConsent: boolean;
+}
+
 export default function RegistrationPage() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   
-  const { register, handleSubmit, control, watch, formState: { errors } } = useForm({
+  const { register, handleSubmit, control, watch, formState: { errors } } = useForm<FormData>({
     defaultValues: {
       childName: '',
       childLastName: '',
@@ -49,7 +85,7 @@ export default function RegistrationPage() {
   
   const mealPlan = watch('mealPlan');
   
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: FormData) => {
     setSubmitting(true);
     setError('');
     
@@ -70,8 +106,9 @@ export default function RegistrationPage() {
       
       setSuccess(true);
       window.scrollTo(0, 0);
-    } catch (err: any) {
-      setError(err.message || 'Ocurrió un error al procesar su solicitud');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Ocurrió un error al procesar su solicitud';
+      setError(errorMessage);
     } finally {
       setSubmitting(false);
     }

@@ -1,10 +1,44 @@
 import nodemailer from 'nodemailer';
 
+interface EmailAttachment {
+  filename?: string;
+  content?: Buffer | string;
+  path?: string;
+  contentType?: string;
+}
+
 interface EmailData {
   to: string;
   subject: string;
   html: string;
-  attachments?: any[];
+  attachments?: EmailAttachment[];
+}
+
+interface RegistrationData {
+  childName: string;
+  childLastName: string;
+  birthdate: string;
+  age: number;
+  parentName: string;
+  parentLastName: string;
+  email: string;
+  phone: string;
+  weeks: string[];
+  mealPlan?: boolean;
+  authorizedPersons?: Array<{
+    name: string;
+    relationship: string;
+    phone: string;
+  }>;
+  emergencyContact: {
+    name: string;
+    relationship: string;
+    phone: string;
+  };
+  healthInsurance: string;
+  allergies?: string;
+  medications?: string;
+  additionalInfo?: string;
 }
 
 export async function sendEmail({ to, subject, html, attachments = [] }: EmailData) {
@@ -15,12 +49,11 @@ export async function sendEmail({ to, subject, html, attachments = [] }: EmailDa
       user: process.env.EMAIL_SERVER_USER,
       pass: process.env.EMAIL_SERVER_PASSWORD,
     },
-    secure: Boolean(process.env.EMAIL_SERVER_SECURE) || false,
   });
 
   try {
     const info = await transporter.sendMail({
-      from: `"Colonia de Verano AMM" <${process.env.EMAIL_FROM}>`,
+      from: process.env.EMAIL_FROM,
       to,
       subject,
       html,
@@ -34,162 +67,226 @@ export async function sendEmail({ to, subject, html, attachments = [] }: EmailDa
   }
 }
 
-export function generateConfirmationEmail(data: any) {
-  // Format date - handle Firestore timestamp or regular Date
+export function generateConfirmationEmail(data: RegistrationData) {
+  // Format date
   let formattedDate = 'N/A';
   if (data.birthdate) {
-    const date = data.birthdate.toDate ? data.birthdate.toDate() : new Date(data.birthdate);
-    formattedDate = date.toLocaleDateString('es-AR');
+    formattedDate = new Date(data.birthdate).toLocaleDateString('es-AR');
   }
-  
-  // Format weeks
-  const weeksText = Array.isArray(data.weeks) ? data.weeks.join(', ') : data.weeks;
-  
+
   // Format authorized persons
-  let authorizedPersonsHtml = '<p>No hay personas autorizadas registradas.</p>';
-  if (data.authorizedPersons && data.authorizedPersons.length > 0) {
-    authorizedPersonsHtml = '<ul>';
-    data.authorizedPersons.forEach((person: any) => {
-      authorizedPersonsHtml += `<li>${person.name} (${person.relationship}, ${person.phone}, DNI: ${person.dni})</li>`;
+  let authorizedPersonsHtml = '';
+  if (data.authorizedPersons && Array.isArray(data.authorizedPersons) && data.authorizedPersons.length > 0) {
+    authorizedPersonsHtml = '<h3>Personas Autorizadas:</h3><ul>';
+    data.authorizedPersons.forEach((person) => {
+      authorizedPersonsHtml += `<li>${person.name} (${person.relationship}) - ${person.phone}</li>`;
     });
     authorizedPersonsHtml += '</ul>';
   }
 
   return `
-    <html>
-      <head>
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Confirmación de Inscripción - Colonia de Verano AMM 2025</title>
         <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          h1 { color: #0077cc; }
-          h2 { color: #444; margin-top: 20px; }
-          .section { margin-bottom: 30px; }
-          table { width: 100%; border-collapse: collapse; }
-          table td { padding: 8px; border-bottom: 1px solid #eee; }
-          .label { font-weight: bold; width: 40%; }
+            body {
+                font-family: Arial, sans-serif;
+                line-height: 1.6;
+                color: #333;
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 20px;
+                background-color: #f9f9f9;
+            }
+            .container {
+                background-color: white;
+                padding: 30px;
+                border-radius: 10px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            }
+            .header {
+                text-align: center;
+                margin-bottom: 30px;
+                padding-bottom: 20px;
+                border-bottom: 2px solid #4a90e2;
+            }
+            .header h1 {
+                color: #4a90e2;
+                margin: 0;
+                font-size: 24px;
+            }
+            .header h2 {
+                color: #666;
+                margin: 5px 0 0 0;
+                font-size: 18px;
+                font-weight: normal;
+            }
+            .success-message {
+                background-color: #d4edda;
+                color: #155724;
+                padding: 15px;
+                border-radius: 5px;
+                margin-bottom: 20px;
+                border-left: 4px solid #28a745;
+            }
+            .info-section {
+                margin-bottom: 25px;
+            }
+            .info-section h3 {
+                color: #4a90e2;
+                margin-bottom: 15px;
+                font-size: 18px;
+                border-bottom: 1px solid #eee;
+                padding-bottom: 5px;
+            }
+            .info-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 15px;
+            }
+            .info-table td {
+                padding: 8px;
+                border-bottom: 1px solid #eee;
+                vertical-align: top;
+            }
+            .info-table td:first-child {
+                font-weight: bold;
+                color: #666;
+                width: 40%;
+            }
+            .weeks-list {
+                background-color: #f8f9fa;
+                padding: 10px;
+                border-radius: 5px;
+                margin: 10px 0;
+            }
+            .weeks-list ul {
+                margin: 0;
+                padding-left: 20px;
+            }
+            .footer {
+                margin-top: 30px;
+                padding-top: 20px;
+                border-top: 1px solid #eee;
+                text-align: center;
+                color: #666;
+                font-size: 14px;
+            }
+            .contact-info {
+                background-color: #f8f9fa;
+                padding: 15px;
+                border-radius: 5px;
+                margin-top: 20px;
+            }
         </style>
-      </head>
-      <body>
+    </head>
+    <body>
         <div class="container">
-          <h1>Confirmación de Inscripción - Colonia de Verano AMM 2025</h1>
-          <p>Gracias por inscribir a su hijo/a en la Colonia de Verano AMM 2025. A continuación encontrará los detalles de su registro:</p>
-          
-          <div class="section">
-            <h2>Datos del Niño/a</h2>
-            <table>
-              <tr>
-                <td class="label">Nombre completo:</td>
-                <td>${data.childName} ${data.childLastName}</td>
-              </tr>
-              <tr>
-                <td class="label">Fecha de nacimiento:</td>
-                <td>${formattedDate}</td>
-              </tr>
-              <tr>
-                <td class="label">Edad:</td>
-                <td>${data.age} años</td>
-              </tr>
-              <tr>
-                <td class="label">DNI:</td>
-                <td>${data.dni}</td>
-              </tr>
-              <tr>
-                <td class="label">Grado escolar:</td>
-                <td>${data.schoolGrade}</td>
-              </tr>
-            </table>
-          </div>
-          
-          <div class="section">
-            <h2>Datos del Padre/Madre/Tutor</h2>
-            <table>
-              <tr>
-                <td class="label">Nombre completo:</td>
-                <td>${data.parentName} ${data.parentLastName}</td>
-              </tr>
-              <tr>
-                <td class="label">Relación:</td>
-                <td>${data.relationship}</td>
-              </tr>
-              <tr>
-                <td class="label">Teléfono:</td>
-                <td>${data.phone}</td>
-              </tr>
-              <tr>
-                <td class="label">Email:</td>
-                <td>${data.email}</td>
-              </tr>
-              <tr>
-                <td class="label">Dirección:</td>
-                <td>${data.address}</td>
-              </tr>
-            </table>
-          </div>
-          
-          <div class="section">
-            <h2>Información Médica</h2>
-            <table>
-              <tr>
-                <td class="label">Obra Social:</td>
-                <td>${data.healthInsurance}</td>
-              </tr>
-              <tr>
-                <td class="label">Número de Afiliado:</td>
-                <td>${data.affiliateNumber}</td>
-              </tr>
-              <tr>
-                <td class="label">Alergias:</td>
-                <td>${data.allergies || 'No informado'}</td>
-              </tr>
-              <tr>
-                <td class="label">Medicamentos:</td>
-                <td>${data.medications || 'No informado'}</td>
-              </tr>
-              <tr>
-                <td class="label">Dieta Especial:</td>
-                <td>${data.specialDiet || 'No informado'}</td>
-              </tr>
-              <tr>
-                <td class="label">Contacto de Emergencia:</td>
-                <td>${data.emergencyContact.name} (${data.emergencyContact.relationship}) - ${data.emergencyContact.phone}</td>
-              </tr>
-            </table>
-          </div>
-          
-          <div class="section">
-            <h2>Opciones de Inscripción</h2>
-            <table>
-              <tr>
-                <td class="label">Semanas:</td>
-                <td>${weeksText}</td>
-              </tr>
-              <tr>
-                <td class="label">Plan de Comida:</td>
-                <td>${data.mealPlan ? 'Sí' : 'No'}</td>
-              </tr>
-              <tr>
-                <td class="label">Restricciones Alimentarias:</td>
-                <td>${data.dietaryRestrictions || 'No informado'}</td>
-              </tr>
-            </table>
-          </div>
-          
-          <div class="section">
-            <h2>Personas Autorizadas a Retirar</h2>
+            <div class="header">
+                <h1>¡Inscripción Confirmada!</h1>
+                <h2>Colonia de Verano AMM 2025</h2>
+            </div>
+
+            <div class="success-message">
+                <strong>¡Felicitaciones!</strong> La inscripción de ${data.childName} ${data.childLastName} ha sido confirmada exitosamente.
+            </div>
+
+            <div class="info-section">
+                <h3>Información del Niño/a</h3>
+                <table class="info-table">
+                    <tr>
+                        <td>Nombre Completo:</td>
+                        <td>${data.childName} ${data.childLastName}</td>
+                    </tr>
+                    <tr>
+                        <td>Fecha de Nacimiento:</td>
+                        <td>${formattedDate}</td>
+                    </tr>
+                    <tr>
+                        <td>Edad:</td>
+                        <td>${data.age} años</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="info-section">
+                <h3>Información del Responsable</h3>
+                <table class="info-table">
+                    <tr>
+                        <td>Nombre:</td>
+                        <td>${data.parentName} ${data.parentLastName}</td>
+                    </tr>
+                    <tr>
+                        <td>Email:</td>
+                        <td>${data.email}</td>
+                    </tr>
+                    <tr>
+                        <td>Teléfono:</td>
+                        <td>${data.phone}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="info-section">
+                <h3>Información Médica</h3>
+                <table class="info-table">
+                    <tr>
+                        <td>Obra Social:</td>
+                        <td>${data.healthInsurance}</td>
+                    </tr>
+                    <tr>
+                        <td>Contacto de Emergencia:</td>
+                        <td>${data.emergencyContact.name} (${data.emergencyContact.relationship}) - ${data.emergencyContact.phone}</td>
+                    </tr>
+                    ${data.allergies ? `
+                    <tr>
+                        <td>Alergias:</td>
+                        <td>${data.allergies}</td>
+                    </tr>
+                    ` : ''}
+                    ${data.medications ? `
+                    <tr>
+                        <td>Medicamentos:</td>
+                        <td>${data.medications}</td>
+                    </tr>
+                    ` : ''}
+                </table>
+            </div>
+
+            <div class="info-section">
+                <h3>Semanas Seleccionadas</h3>
+                <div class="weeks-list">
+                    <ul>
+                        ${data.weeks.map(week => `<li>${week}</li>`).join('')}
+                    </ul>
+                </div>
+                ${data.mealPlan ? '<p><strong>✓ Plan de comida incluido</strong></p>' : ''}
+            </div>
+
             ${authorizedPersonsHtml}
-          </div>
-          
-          <div class="section">
-            <h2>Información Adicional</h2>
-            <p>${data.additionalInfo || 'No se proporcionó información adicional.'}</p>
-          </div>
-          
-          <hr>
-          <p>Pronto nos comunicaremos para proporcionarle información adicional sobre la colonia.</p>
-          <p>Para cualquier consulta o modificación, por favor contáctenos por email o teléfono.</p>
-          <p>¡Gracias por confiar en la Colonia de Verano AMM 2025!</p>
+
+            ${data.additionalInfo ? `
+            <div class="info-section">
+                <h3>Información Adicional</h3>
+                <p>${data.additionalInfo}</p>
+            </div>
+            ` : ''}
+
+            <div class="contact-info">
+                <h3>Información Importante</h3>
+                <p>Conserve este email como comprobante de inscripción. Recibirá más información sobre horarios, actividades y preparación antes del inicio de la colonia.</p>
+                <p>Si tiene alguna consulta, no dude en contactarnos.</p>
+            </div>
+
+            <div class="footer">
+                <p>Este email fue generado automáticamente. Por favor, no responda a este mensaje.</p>
+                <p><strong>Colonia de Verano AMM 2025</strong></p>
+            </div>
         </div>
-      </body>
+    </body>
     </html>
   `;
 }
